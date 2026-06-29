@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0">
+<title>울진 스노클링 클릭지도</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#eef3f6}
+.wrap{height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#eef3f6}
+.info-bar{flex:0 0 auto;background:#15294a;color:#fff;font-size:13px;font-weight:800;padding:8px 12px;text-align:center;letter-spacing:-.3px}
+.map-box{flex:1;position:relative;overflow:hidden;background:#dce8ef}
+#map{position:absolute;inset:0;width:100%;height:100%}
+.fallback{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:#15294a;font-size:14px;font-weight:800;line-height:1.55;background:#eef3f6}
+.leaflet-div-icon,.poi-icon{background:transparent!important;border:0!important;box-shadow:none!important}
+.leaflet-marker-icon{overflow:visible!important}
+.leaflet-control-attribution{font-size:10px!important;background:rgba(255,255,255,.75)!important}
+.poi{position:relative;width:0;height:0;overflow:visible;--c:#14325a}
+.poi-num{position:absolute;left:-12px;top:-12px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--c);color:#fff;font-size:12px;font-weight:800;line-height:1;border:1.7px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.34);z-index:5;cursor:pointer;user-select:none}
+.poi-num.on{background:#c21f32!important;color:#fff!important}
+.poi-name{position:absolute;top:-8px;font-size:13px;font-weight:900;line-height:1.18;color:var(--c);white-space:nowrap;letter-spacing:-.65px;text-shadow:-1px -1px 0 rgba(255,255,255,.98),1px -1px 0 rgba(255,255,255,.98),-1px 1px 0 rgba(255,255,255,.98),1px 1px 0 rgba(255,255,255,.98),0 0 4px rgba(255,255,255,.96);z-index:4;cursor:pointer;user-select:none}
+.poi.right .poi-name{left:16px;text-align:left}.poi.left .poi-name{right:16px;text-align:right}
+.poi-link{position:absolute;top:-9px;display:none;z-index:10;white-space:nowrap}.poi.right .poi-link{right:18px;left:auto;text-align:right}.poi.left .poi-link{left:18px;right:auto;text-align:left}
+.poi.open .poi-link{display:inline-flex;align-items:center}
+.poi-link a{min-height:30px;padding:7px 11px;border-radius:999px;background:var(--c);color:#fff!important;text-decoration:none!important;font-size:12.3px;font-weight:900;line-height:1;border:1px solid rgba(255,255,255,.82);box-shadow:0 2px 7px rgba(0,0,0,.28)}
+@media(max-width:480px){
+  .info-bar{font-size:12.3px;padding:7px 10px}
+  .poi-num{width:25px;height:25px;left:-12.5px;top:-12.5px;font-size:12px}
+  .poi-name{font-size:12.4px;letter-spacing:-.8px;top:-8px}
+  .poi.right .poi-name{left:15px}.poi.left .poi-name{right:15px}
+  .poi-link{top:-8px}.poi.right .poi-link{right:17px}.poi.left .poi-link{left:17px}.poi-link a{font-size:11.8px;min-height:29px;padding:7px 9px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="info-bar">📍 번호를 누르면 네이버 지도 링크가 나와요</div>
+  <div class="map-box"><div id="map"></div></div>
+</div>
+<script>
+(function(){
+  var spots=[
+    {num:1,name:'구산해수욕장',short:'구산',lat:36.9148,lng:129.4054,dir:'right',color:'#074b63',naver:'https://map.naver.com/p/search/%EA%B5%AC%EC%82%B0%ED%95%B4%EC%88%98%EC%9A%95%EC%9E%A5'},
+    {num:2,name:'황금대게공원',short:'황금대게',lat:36.9388,lng:129.3972,dir:'right',color:'#7a2d00',naver:'https://map.naver.com/p/search/%EC%9A%B8%EC%A7%84%ED%99%A9%EA%B8%88%EB%8C%80%EA%B2%8C%EA%B3%B5%EC%9B%90'},
+    {num:3,name:'그랑블루펜션',short:'그랑블루',lat:36.9528,lng:129.3935,dir:'left',color:'#1d3f91',naver:'https://map.naver.com/p/search/%EC%9A%B8%EC%A7%84%EA%B7%B8%EB%9E%91%EB%B8%94%EB%A3%A8%ED%8E%9C%EC%85%98'},
+    {num:4,name:'망양정해변',short:'망양정',lat:36.9905,lng:129.3900,dir:'right',color:'#00602f',naver:'https://map.naver.com/p/search/%EB%A7%9D%EC%96%91%EC%A0%95%ED%95%B4%EC%88%98%EC%9A%95%EC%9E%A5'},
+    {num:5,name:'망양휴게소',short:'망양휴게소',lat:36.9988,lng:129.3884,dir:'left',color:'#a12a08',naver:'https://map.naver.com/p/search/%EB%A7%9D%EC%96%91%ED%9C%B4%EA%B2%8C%EC%86%8C'},
+    {num:6,name:'진복리해변',short:'진복리',lat:37.0118,lng:129.3864,dir:'right',color:'#5b21a8',naver:'https://map.naver.com/p/search/%EA%B2%BD%EB%B6%81%20%EC%9A%B8%EC%A7%84%EA%B5%B0%20%EA%B7%BC%EB%82%A8%EB%A9%B4%20%EC%A7%84%EB%B3%B5%EB%A6%AC%20%EC%82%B080-3'},
+    {num:7,name:'덕신리 포인트',short:'덕신리',lat:37.0465,lng:129.3734,dir:'right',color:'#006b63',naver:'https://map.naver.com/p/search/%EA%B2%BD%EC%83%81%EB%B6%81%EB%8F%84%20%EC%9A%B8%EC%A7%84%EA%B5%B0%20%EB%A7%A4%ED%99%94%EB%A9%B4%20%EB%8D%95%EC%8B%A0%EB%A6%AC%20%EC%82%B0242'},
+    {num:8,name:'봉수항',short:'봉수항',lat:37.0778,lng:129.3706,dir:'left',color:'#b31242',naver:'https://map.naver.com/p/search/%EC%9A%B8%EC%A7%84%EB%B4%89%EC%88%98%ED%95%AD'},
+    {num:9,name:'하트해변',short:'하트해변',lat:37.0858,lng:129.3694,dir:'right',color:'#6d2f8d',naver:'https://map.naver.com/p/search/%EC%9A%B8%EC%A7%84%ED%95%98%ED%8A%B8%ED%95%B4%EB%B3%80'},
+    {num:10,name:'나곡해수욕장',short:'나곡',lat:37.1575,lng:129.3614,dir:'left',color:'#172f82',naver:'https://map.naver.com/p/search/%EB%82%98%EA%B3%A1%ED%95%B4%EC%88%98%EC%9A%95%EC%9E%A5'}
+  ];
+
+  function escapeHtml(v){return String(v).replace(/[&<>\"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]||m;});}
+  function escapeAttr(v){return String(v).replace(/[&<>\"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]||m;});}
+
+  if(typeof L==='undefined'){
+    document.getElementById('map').innerHTML='<div class="fallback">지도를 불러오지 못했습니다.<br>인터넷 연결 후 새로고침해주세요.</div>';
+    return;
+  }
+
+  var map=L.map('map',{zoomControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:true,boxZoom:false,keyboard:false,tap:false,zoomSnap:0.25,zoomDelta:0.25});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(map);
+
+  var lats=spots.map(function(s){return s.lat;}), lngs=spots.map(function(s){return s.lng;});
+  var minLat=Math.min.apply(null,lats), maxLat=Math.max.apply(null,lats);
+  var cLng=(Math.min.apply(null,lngs)+Math.max.apply(null,lngs))/2;
+  // 발행/모바일 iframe에서 자동 과확대되는 것을 막기 위해
+  // 울진 남쪽 구산~북쪽 나곡 구간 전체가 처음부터 보이도록 줌 상한을 낮춘다.
+  var halfLng=0.055;
+
+  function setBounds(){
+    map.fitBounds([[minLat-0.010,cLng-halfLng],[maxLat+0.010,cLng+halfLng]],{
+      paddingTopLeft:[18,14],paddingBottomRight:[18,18],maxZoom:11.5
+    });
+    var z=map.getZoom();
+    if(z>11.5){ map.setZoom(11.5); z=11.5; }
+    map.setMinZoom(z);
+    map.setMaxZoom(Math.min(z+0.75,12.25));
+  }
+
+  var layer=L.layerGroup().addTo(map);
+  var activeEl=null;
+  function closeActive(){
+    if(activeEl){
+      var poi=activeEl.querySelector('.poi');
+      var num=activeEl.querySelector('.poi-num');
+      if(poi) poi.classList.remove('open');
+      if(num) num.classList.remove('on');
+      activeEl=null;
+    }
+  }
+  function markerHtml(s){
+    var label=window.innerWidth<=420?s.short:s.name;
+    return '<div class="poi '+s.dir+'" style="--c:'+s.color+'">'+
+      '<span class="poi-name">'+escapeHtml(label)+'</span>'+
+      '<span class="poi-num">'+s.num+'</span>'+
+      '<span class="poi-link"><a href="'+escapeAttr(s.naver)+'" target="_blank" rel="noopener">네이버 지도</a></span>'+
+      '</div>';
+  }
+  function attachClick(marker){
+    var el=marker.getElement();
+    if(!el) return;
+    var link=el.querySelector('a');
+    if(link){link.addEventListener('click',function(e){e.stopPropagation();});}
+    el.addEventListener('click',function(e){
+      e.stopPropagation();
+      if(activeEl===el){closeActive();return;}
+      closeActive();
+      el.querySelector('.poi').classList.add('open');
+      el.querySelector('.poi-num').classList.add('on');
+      activeEl=el;
+    });
+  }
+  function adjustedPoints(){
+    var pts=spots.map(function(s){
+      var p=map.latLngToContainerPoint([s.lat,s.lng]);
+      return {s:s,x:p.x,y:p.y};
+    }).sort(function(a,b){return a.y-b.y;});
+    var size=map.getSize();
+    var gap=window.innerWidth<=480?38:40;
+    var top=28, bottom=size.y-30;
+    for(var i=1;i<pts.length;i++){
+      if(pts[i].y-pts[i-1].y<gap) pts[i].y=pts[i-1].y+gap;
+    }
+    var overflow=pts[pts.length-1].y-bottom;
+    if(overflow>0){for(var j=0;j<pts.length;j++) pts[j].y-=overflow;}
+    var under=top-pts[0].y;
+    if(under>0){for(var k=0;k<pts.length;k++) pts[k].y+=under;}
+    return pts;
+  }
+  function renderMarkers(){
+    closeActive();
+    layer.clearLayers();
+    var pts=adjustedPoints();
+    pts.forEach(function(p){
+      var ll=map.containerPointToLatLng([p.x,p.y]);
+      var m=L.marker(ll,{icon:L.divIcon({className:'poi-icon',html:markerHtml(p.s),iconSize:[1,1],iconAnchor:[0,0]})}).addTo(layer);
+      m.on('add',function(){attachClick(m);});
+      setTimeout(function(){attachClick(m);},0);
+    });
+  }
+
+  setBounds();
+  map.whenReady(function(){renderMarkers();});
+  map.on('zoomend resize',function(){renderMarkers();});
+  map.getContainer().addEventListener('click',closeActive);
+})();
+</script>
+</body>
+</html>
