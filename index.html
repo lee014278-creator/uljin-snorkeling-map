@@ -62,21 +62,24 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
     return;
   }
 
-  var map=L.map('map',{zoomControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:true,boxZoom:false,keyboard:false,tap:false});
+  var map=L.map('map',{zoomControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:true,boxZoom:false,keyboard:false,tap:false,zoomSnap:0.25,zoomDelta:0.25});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(map);
 
   var lats=spots.map(function(s){return s.lat;}), lngs=spots.map(function(s){return s.lng;});
   var minLat=Math.min.apply(null,lats), maxLat=Math.max.apply(null,lats);
   var cLng=(Math.min.apply(null,lngs)+Math.max.apply(null,lngs))/2;
-  var halfLng=0.022;
+  // 발행/모바일 iframe에서 자동 과확대되는 것을 막기 위해
+  // 울진 남쪽 구산~북쪽 나곡 구간 전체가 처음부터 보이도록 줌 상한을 낮춘다.
+  var halfLng=0.055;
 
   function setBounds(){
-    map.fitBounds([[minLat-0.0008,cLng-halfLng],[maxLat+0.0008,cLng+halfLng]],{
-      paddingTopLeft:[8,6],paddingBottomRight:[8,6],maxZoom:14
+    map.fitBounds([[minLat-0.010,cLng-halfLng],[maxLat+0.010,cLng+halfLng]],{
+      paddingTopLeft:[18,14],paddingBottomRight:[18,18],maxZoom:11.5
     });
     var z=map.getZoom();
+    if(z>11.5){ map.setZoom(11.5); z=11.5; }
     map.setMinZoom(z);
-    map.setMaxZoom(z+1);
+    map.setMaxZoom(Math.min(z+0.75,12.25));
   }
 
   var layer=L.layerGroup().addTo(map);
